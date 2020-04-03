@@ -19,9 +19,9 @@ object WikipediaRanking {
     "JavaScript", "Java", "PHP", "Python", "C#", "C++", "Ruby", "CSS",
     "Objective-C", "Perl", "Scala", "Haskell", "MATLAB", "Clojure", "Groovy")
 
-  val spark: SparkSession = SparkSession.builder().getOrCreate()
-  val sc: SparkContext = SparkContext(SparkSession.builder().master()
-  val wikiRdd: RDD[WikipediaArticle] = ???
+  val spark: SparkSession = SparkSession.builder.appName("Simple Application").master("local[*]").getOrCreate()
+  val sc: SparkContext = spark.sparkContext
+  val wikiRdd: RDD[WikipediaArticle] = spark.sparkContext.parallelize(WikipediaData.articles)
 
   /** Returns the number of articles on which the language `lang` occurs.
    *  Hint1: consider using method `aggregate` on RDD[T].
@@ -29,7 +29,16 @@ object WikipediaRanking {
    *  Hint3: the only whitespaces are blanks " "
    *  Hint4: no need to search in the title :)
    */
-  def occurrencesOfLang(lang: String, rdd: RDD[WikipediaArticle]): Int = ???
+  def occurrencesOfLang(lang: String, rdd: RDD[WikipediaArticle]): Int = {
+    var count = 0
+    rdd.foreach(article => {
+      if (article.title.contains(lang) || article.text.contains(lang)) {
+        count+=1
+      }
+    })
+
+    count
+  }
 
   /** (1) Use `occurrencesOfLang` to compute the ranking of the languages
    *     (`langs`) by determining the number of Wikipedia articles that
@@ -39,7 +48,16 @@ object WikipediaRanking {
    *   Note: this operation is long-running. It can potentially run for
    *   several seconds.
    */
-  def rankLangs(langs: List[String], rdd: RDD[WikipediaArticle]): List[(String, Int)] = ???
+  def rankLangs(langs: List[String], rdd: RDD[WikipediaArticle]): List[(String, Int)] = {
+    val ranks = List[(String, Int)]()
+
+    langs.foreach(lang =>{
+      val score = occurrencesOfLang(lang, rdd)
+      (lang, score)::ranks
+    })
+
+    ranks.sortBy(rank => rank._2)
+  }
 
   /** Compute an inverted index of the set of articles, mapping each language
    * to the Wikipedia pages in which it occurs.
