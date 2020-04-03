@@ -71,3 +71,7 @@ fabric.properties
 
 # Android studio 3.1+ serialized cache file
 .idea/caches/build_file_checksums.ser
+
+# Custom rules
+/null/Coursier/cache/v1/https/repo1.maven.org/maven2/
+/project/target/config-classes/*.cache
