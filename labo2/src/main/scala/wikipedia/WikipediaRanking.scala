@@ -22,7 +22,6 @@ object WikipediaRanking {
   val spark: SparkSession = SparkSession.builder.appName("Simple Application").master("local[*]").getOrCreate()
   val sc: SparkContext = spark.sparkContext
   val wikiRdd: RDD[WikipediaArticle] = spark.sparkContext.parallelize(WikipediaData.articles)
-
   /** Returns the number of articles on which the language `lang` occurs.
    *  Hint1: consider using method `aggregate` on RDD[T].
    *  Hint2: should you count the "Java" language when you see "JavaScript"?
@@ -30,7 +29,7 @@ object WikipediaRanking {
    *  Hint4: no need to search in the title :)
    */
   def occurrencesOfLang(lang: String, rdd: RDD[WikipediaArticle]): Int = {
-    rdd.filter(article => article.text.matches(lang + "[ .,:;!?]") || article.title.matches(lang + "[ .,:;!?]")).count().toInt
+    rdd.filter(article => (lang + "[ .,:;!?]").r.findFirstIn(article.text).isDefined).count().toInt
   }
 
   /** (1) Use `occurrencesOfLang` to compute the ranking of the languages
@@ -42,14 +41,14 @@ object WikipediaRanking {
    *   several seconds.
    */
   def rankLangs(langs: List[String], rdd: RDD[WikipediaArticle]): List[(String, Int)] = {
-    langs.map(lang => (lang, occurrencesOfLang(lang, rdd))).sortBy(rank => rank._2)
+    langs.map(lang => (lang, occurrencesOfLang(lang, rdd))).sortBy(rank => rank._2).reverse
   }
 
   /** Compute an inverted index of the set of articles, mapping each language
    * to the Wikipedia pages in which it occurs.
    */
   def makeIndex(langs: List[String], rdd: RDD[WikipediaArticle]): RDD[(String, Iterable[WikipediaArticle])] = {
-    rdd.flatMap(article => langs.map(l => (l, article)).filter(x => x._2.text.matches(x._1 + "[ .,:;!?]") || x._2.title.matches(x._1 + "[ .,:;!?]"))).groupByKey()
+    rdd.flatMap(article => langs.map(lang => (lang, article)).filter(x =>  (x._1 + "[ .,:;!?]").r.findFirstIn(x._2.text).isDefined)).groupByKey()
   }
 
   /** (2) Compute the language ranking again, but now using the inverted index. Can you notice
@@ -70,7 +69,7 @@ object WikipediaRanking {
    *   several seconds.
    */
   def rankLangsReduceByKey(langs: List[String], rdd: RDD[WikipediaArticle]): List[(String, Int)] = {
-    rdd.flatMap(article => langs.map(l => (l, article)).filter(x => x._2.text.matches(x._1 + "[ .,:;!?]") || x._2.title.matches(x._1 + "[ .,:;!?]")).map(x => (x._1, 1)))
+    rdd.flatMap(article => langs.map(l => (l, article)).filter(x => (x._1 + "[ .,:;!?]").r.findFirstIn(x._2.text).isDefined).map(x => (x._1, 1)))
       .reduceByKey(_ + _).sortBy(-_._2).collect().toList
   }
 
